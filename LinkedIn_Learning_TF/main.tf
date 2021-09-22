@@ -1,7 +1,7 @@
 provider "aws" {
   region     = "us-east-2"
-  access_key = "0"
-  secret_key = "0"
+  access_key = "AKIAWVJQTWKM5WOED35O"
+  secret_key = "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"
 }
 
 resource "aws_s3_bucket" "my-bucket" {
@@ -52,6 +52,15 @@ resource "aws_instance" "prod_web" {
   ]
 
    tags = {
+    "Terraform" : "true"
+  }
+}
+
+// static ip
+resource "aws_eip" "prod_web" {
+  instance = aws_instance.prod_web.id
+
+  tags = {
     "Terraform" : "true"
   }
 }
