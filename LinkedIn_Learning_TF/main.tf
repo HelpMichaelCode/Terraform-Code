@@ -15,9 +15,25 @@ resource "aws_s3_bucket" "my-bucket" {
 
 resource "aws_default_vpc" "default"{}
 
+resource "aws_default_subnet" "default_az1" {
+  availability_zone = "us-east-2a"
+
+  tags = {
+    "Terraform" : "true"
+  }
+}
+
+resource "aws_default_subnet" "default_az2" {
+  availability_zone = "us-east-2b"
+  
+  tags = {
+    "Terraform" : "true"
+  }
+}
+
 resource "aws_security_group" "prod_web"{
   name        = "prod_web"
-  description = "Allo standard http and https ports inbound and everything outbound"
+  description = "Allow standard http and https ports inbound and everything outbound"
 
   ingress {
     from_port   = 80
@@ -44,7 +60,9 @@ resource "aws_security_group" "prod_web"{
 }
 
 resource "aws_instance" "prod_web" {
-  ami           = "ami-04fba448246555019"
+  count = 2
+
+  ami           = "ami-0ed34781dc2ec3964"
   instance_type = "t2.nano"
 
   vpc_security_group_ids = [
@@ -56,9 +74,31 @@ resource "aws_instance" "prod_web" {
   }
 }
 
+resource "aws_eip_association" "prod_web" { 
+  instance_id   = aws_instance.prod_web[0].id 
+  allocation_id = aws_eip.prod_web.id
+}
 // static ip
 resource "aws_eip" "prod_web" {
-  instance = aws_instance.prod_web.id
+  instance = aws_instance.prod_web[0].id
+
+  tags = {
+    "Terraform" : "true"
+  }
+}
+
+resource "aws_elb" "prod_web" {
+  name            = "prod-web-elb"
+  instances       = aws_instance.prod_web.*.id 
+  subnets         = [aws_default_subnet.default_az1.id, aws_default_subnet.default_az2.id]
+  security_groups = [aws_security_group.prod_web.id]
+
+  listener {
+    instance_port     = 80
+    instance_protocol = "http"
+    lb_port           = 80
+    lb_protocol       = "http"
+  }
 
   tags = {
     "Terraform" : "true"
